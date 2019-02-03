@@ -10,7 +10,6 @@
 #include <thread>
 #include <unordered_map>
 
-//std::unordered_map<std::thread::id, std::pair<double, int>> time_iterations; //race condition
 std::vector<std::pair<double, int>> time_iterations;
 
 int busyWait(double seconds)
@@ -28,46 +27,38 @@ int busyWait(double seconds)
     return iterations;
 }
 
-static std::atomic_uint worker_c(0);
-
-void worker(double time_to_wait)
+void worker(double time_to_wait, uint id)
 {
     auto start = std::chrono::steady_clock::now();
     auto it = busyWait(time_to_wait);
     auto end = std::chrono::steady_clock::now();
-    auto tid = std::this_thread::get_id();
-    time_iterations[worker_c++] = std::make_pair(std::chrono::duration<double>(end-start).count(), it);
-//    time_iterations[tid] = std::make_pair(std::chrono::duration<double>(end-start).count(), it); //race condition
-//    std::cout << "[" << tid << "]"<< " Time: " << std::chrono::duration<double>(end-start).count() << " second[s]" << std::endl;
-//    std::cout << "[" << tid << "]"<< " Iterations: " << it << std::endl;
+    time_iterations[id] = std::make_pair(std::chrono::duration<double>(end-start).count(), it);
 }
 
 int main(int argc, char** argv)
 {
-    if (argc != 2)
+    if (argc != 3)
     {
-        std::cout << "Usage: [application] [time to wait]\n";
+        std::cout << "Usage: [application] [time to wait] [number of jobs]\n";
         return -1;
     }
-    double time_to_wait = std::stod(argv[1]);
-    auto start = std::chrono::steady_clock::now();
-////    auto it = busyWait(0.000000500);
-//    auto it = busyWait(time_to_wait);
-//    auto tid = std::this_thread::get_id();
-//    std::cout << "[" << tid << "]"<< " Elapsed time: " << std::chrono::duration<double>(end-start).count() << " second[s]" << std::endl;
-//    std::cout << "[" << tid << "]"<< " Number of iterations: " << it << std::endl;
+    const double time_to_wait = std::stod(argv[1]);
+    const size_t number_of_workers = std::stoi(argv[2]);
 
-//    worker(time_to_wait);
-    const size_t number_of_workers = 250;
     time_iterations.resize(number_of_workers);
     std::vector<std::thread> runners(number_of_workers);
-    for (int i = 0; i < number_of_workers; ++i) {
-        runners[i] = std::move(std::thread(&worker, time_to_wait));
-    }
 
+    //start timer
+    auto start = std::chrono::steady_clock::now();
+    //start the jobs
+    for (int i = 0; i < number_of_workers; ++i) {
+        runners[i] = std::move(std::thread(&worker, time_to_wait, i));
+    }
+    //waiting jobs
     for(auto& r: runners){
         if (r.joinable()) r.join();
     }
+    //end timer
     auto end = std::chrono::steady_clock::now();
 
     int c = 0;
