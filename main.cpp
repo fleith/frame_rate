@@ -18,14 +18,17 @@
 static const char USAGE[] =
         R"(Real-Time Playback Simulator.
     Usage:
-      rtpb --wait=<seconds> --jobs=<number>
+      rtpb --duration=<seconds> [--jobs=<number> --realtime --realfps=<rframes> --fps=<frames>]
       rtpb (-h | --help)
       rtpb --version
     Options:
-      -h --help             Show this screen.
-      --version             Show version.
-      --wait=<seconds>      Job duration.
-      --jobs=<number>       Number of simultaneous threads.
+      -h --help                    Show this screen.
+      --version                    Show version.
+      -d --duration=<seconds>      Simulation duration.
+      -j --jobs=<number>           Number of simultaneous threads [Default: 1].
+      --realtime                   Enable real-time FPS.
+      --realfps=<rframes>          Real-time FPS [Default: 24].
+      --fps=<frames>               Reachable FPS [Default: 100].
 )";
 
 
@@ -62,17 +65,28 @@ int main(int argc, char** argv)
                              true,               // show help if requested
                              "Real-Time Playback Simulator 0.1");  // version string
 
-    const double time_to_wait = std::stod(args["--wait"].asString());
-    const size_t number_of_workers = std::stoi(args["--jobs"].asString());
+    const double duration = std::stod(args["--duration"].asString());
+    const size_t number_of_jobs = std::stoi(args["--jobs"].asString());
+    const double fps = std::stod(args["--fps"].asString());
+    const bool real_time = args["--realtime"].asBool();
+    const double real_time_fps = std::stod(args["--realfps"].asString());
 
-    time_iterations.resize(number_of_workers);
-    std::vector<std::thread> runners(number_of_workers);
+    std::cout << "____________________________" << std::endl;
+    std::cout << "Real-Time Playback Simulator" << std::endl;
+    std::cout << "  Reachable FPS: " << fps << std::endl;
+    std::cout << "  Real-Time Mode: " << (real_time ? "ON" : "OFF") << std::endl;
+    if(real_time) std::cout << "  Real-Time FPS: " << real_time_fps << std::endl;
+    std::cout << "____________________________" << std::endl;
+    std::cout << std::endl;
+
+    time_iterations.resize(number_of_jobs);
+    std::vector<std::thread> runners(number_of_jobs);
 
     //start timer
     auto start = std::chrono::steady_clock::now();
     //start the jobs
-    for (int i = 0; i < number_of_workers; ++i) {
-        runners[i] = std::move(std::thread(&worker, time_to_wait, i));
+    for (int i = 0; i < number_of_jobs; ++i) {
+        runners[i] = std::move(std::thread(&worker, duration, i));
     }
     //waiting jobs
     for(auto& r: runners){
