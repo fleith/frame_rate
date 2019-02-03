@@ -10,6 +10,25 @@
 #include <thread>
 #include <unordered_map>
 
+
+#include "docopt.h"
+
+#include <iostream>
+
+static const char USAGE[] =
+        R"(Real-Time Playback Simulator.
+    Usage:
+      rtpb --wait=<seconds> --jobs=<number>
+      rtpb (-h | --help)
+      rtpb --version
+    Options:
+      -h --help             Show this screen.
+      --version             Show version.
+      --wait=<seconds>      Job duration.
+      --jobs=<number>       Number of simultaneous threads.
+)";
+
+
 std::vector<std::pair<double, int>> time_iterations;
 
 int busyWait(double seconds)
@@ -37,13 +56,14 @@ void worker(double time_to_wait, uint id)
 
 int main(int argc, char** argv)
 {
-    if (argc != 3)
-    {
-        std::cout << "Usage: [application] [time to wait] [number of jobs]\n";
-        return -1;
-    }
-    const double time_to_wait = std::stod(argv[1]);
-    const size_t number_of_workers = std::stoi(argv[2]);
+    std::map<std::string, docopt::value> args
+            = docopt::docopt(USAGE,
+                             { argv + 1, argv + argc },
+                             true,               // show help if requested
+                             "Real-Time Playback Simulator 0.1");  // version string
+
+    const double time_to_wait = std::stod(args["--wait"].asString());
+    const size_t number_of_workers = std::stoi(args["--jobs"].asString());
 
     time_iterations.resize(number_of_workers);
     std::vector<std::thread> runners(number_of_workers);
