@@ -1,1 +1,1 @@
-# sleep
+# Frame Rate (FPS)
